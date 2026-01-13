@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 
 # Datum für Ordnername
 $targetDate = Get-Date -Format "yyyy-MM-dd"
-$featureName = "GermanUI-StringSupport"
+$featureName = "FixEndianness"
 
 # Zielordner gemäß CLAUDE.md
 $targetBase = "C:\Users\matth\OneDrive\Dokumente\Portable Anwendungen"

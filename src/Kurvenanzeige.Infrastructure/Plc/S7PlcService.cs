@@ -115,8 +115,20 @@ public class S7PlcService : IPlcService, IDisposable
 
         try
         {
-            var result = await Task.Run(() => _plc!.Read($"DB{dbNumber}.DBD{offset}"), ct);
-            return Convert.ToSingle(result);
+            // Read 4 bytes for REAL value
+            var bytes = await Task.Run(() => _plc!.ReadBytes(DataType.DataBlock, dbNumber, offset, 4), ct);
+
+            // Convert bytes to float (REAL) - S7 uses Big Endian
+            if (BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(bytes);
+            }
+
+            float value = BitConverter.ToSingle(bytes, 0);
+
+            _logger.LogDebug("Read REAL from DB{DbNumber}.DBD{Offset}: {Value}", dbNumber, offset, value);
+
+            return value;
         }
         catch (Exception ex)
         {

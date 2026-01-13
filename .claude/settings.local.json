@@ -17,7 +17,9 @@
       "Bash(gh auth:*)",
       "Bash(gh repo create:*)",
       "Bash(git push:*)",
-      "Bash(pwsh -Command:*)"
+      "Bash(pwsh -Command:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File deployment/Publish-SelfContained.ps1)",
+      "Bash(sqlite3:*)"
     ]
   }
 }
