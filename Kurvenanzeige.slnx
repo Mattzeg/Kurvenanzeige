@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Kurvenanzeige.Core/Kurvenanzeige.Core.csproj" />
+    <Project Path="src/Kurvenanzeige.Infrastructure/Kurvenanzeige.Infrastructure.csproj" />
+    <Project Path="src/Kurvenanzeige.Shared/Kurvenanzeige.Shared.csproj" />
+    <Project Path="src/Kurvenanzeige.Web/Kurvenanzeige.Web.csproj" />
+  </Folder>
+</Solution>

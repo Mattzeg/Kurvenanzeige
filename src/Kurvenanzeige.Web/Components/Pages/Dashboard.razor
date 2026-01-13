@@ -1,0 +1,206 @@
+@page "/"
+@using Kurvenanzeige.Core.Interfaces
+@using Kurvenanzeige.Core.Models
+@using Kurvenanzeige.Infrastructure.Services
+@inject IDataRepository DataRepository
+@inject UiUpdateService UiUpdateService
+@inject ILogger<Dashboard> Logger
+@implements IDisposable
+@rendermode InteractiveServer
+
+<PageTitle>Dashboard - Kurvenanzeige</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2>Live Process Data</h2>
+            <span class="badge @(_isSystemHealthy ? "bg-success" : "bg-danger")">
+                @(_isSystemHealthy ? "System Running" : "System Error")
+            </span>
+            <span class="ms-2 text-muted">Last Update: @_lastUpdate.ToString("HH:mm:ss")</span>
+        </div>
+    </div>
+
+    @if (_analogValues.Any())
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <h4>Analog Values</h4>
+            </div>
+            @foreach (var analog in _analogValues)
+            {
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card h-100 @GetQualityClass(analog.Quality)">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">@analog.DisplayName</h6>
+                            <h3 class="card-title mb-0">
+                                @analog.Value.ToString("F2")
+                                @if (!string.IsNullOrEmpty(analog.Unit))
+                                {
+                                    <small class="text-muted">@analog.Unit</small>
+                                }
+                            </h3>
+                            <small class="text-muted">@analog.TagName</small>
+                        </div>
+                        <div class="card-footer text-muted">
+                            <small>@analog.Timestamp.ToString("HH:mm:ss")</small>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (_digitalSignals.Any())
+    {
+        <div class="row">
+            <div class="col-12">
+                <h4>Digital Signals</h4>
+            </div>
+            <div class="col-12">
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var digital in _digitalSignals)
+                    {
+                        <div class="alert @(digital.Value ? "alert-success" : "alert-secondary") mb-0 py-2 px-3">
+                            <i class="bi @(digital.Value ? "bi-check-circle-fill" : "bi-circle")"></i>
+                            <strong>@digital.DisplayName</strong>
+                            <small class="ms-2 text-muted">(@digital.Timestamp.ToString("HH:mm:ss"))</small>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (!_analogValues.Any() && !_digitalSignals.Any())
+    {
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <h5>No Data Available</h5>
+                    <p>Waiting for PLC data... Please check:</p>
+                    <ul>
+                        <li>PLC connection settings in appsettings.json</li>
+                        <li>Data point configurations in the database</li>
+                        <li>PLC network connectivity</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<AnalogValue> _analogValues = new();
+    private List<DigitalSignal> _digitalSignals = new();
+    private DateTime _lastUpdate = DateTime.Now;
+    private bool _isSystemHealthy = false;
+    private Func<List<PlcDataPoint>, Task>? _updateCallback;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadLatestDataAsync();
+
+            _updateCallback = async (readings) =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    UpdateLocalData(readings);
+                    await InvokeAsync(StateHasChanged);
+                });
+            };
+
+            await UiUpdateService.SubscribeAsync(_updateCallback);
+
+            _isSystemHealthy = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing dashboard");
+            _isSystemHealthy = false;
+        }
+    }
+
+    private async Task LoadLatestDataAsync()
+    {
+        try
+        {
+            var latestValues = await DataRepository.GetLatestValuesAsync();
+
+            _analogValues = latestValues.Values
+                .OfType<AnalogValue>()
+                .OrderBy(v => v.DisplayName)
+                .ToList();
+
+            _digitalSignals = latestValues.Values
+                .OfType<DigitalSignal>()
+                .OrderBy(v => v.DisplayName)
+                .ToList();
+
+            if (latestValues.Any())
+            {
+                _lastUpdate = latestValues.Values.Max(v => v.Timestamp);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading latest data");
+        }
+    }
+
+    private void UpdateLocalData(List<PlcDataPoint> readings)
+    {
+        foreach (var reading in readings)
+        {
+            if (reading is AnalogValue analog)
+            {
+                var existing = _analogValues.FirstOrDefault(a => a.TagName == analog.TagName);
+                if (existing != null)
+                {
+                    _analogValues.Remove(existing);
+                }
+                _analogValues.Add(analog);
+            }
+            else if (reading is DigitalSignal digital)
+            {
+                var existing = _digitalSignals.FirstOrDefault(d => d.TagName == digital.TagName);
+                if (existing != null)
+                {
+                    _digitalSignals.Remove(existing);
+                }
+                _digitalSignals.Add(digital);
+            }
+        }
+
+        _analogValues = _analogValues.OrderBy(v => v.DisplayName).ToList();
+        _digitalSignals = _digitalSignals.OrderBy(v => v.DisplayName).ToList();
+
+        if (readings.Any())
+        {
+            _lastUpdate = readings.Max(r => r.Timestamp);
+        }
+
+        _isSystemHealthy = true;
+    }
+
+    private string GetQualityClass(Quality quality)
+    {
+        return quality switch
+        {
+            Quality.Good => "border-success",
+            Quality.Uncertain => "border-warning",
+            Quality.Bad => "border-danger",
+            _ => ""
+        };
+    }
+
+    public void Dispose()
+    {
+        if (_updateCallback != null)
+        {
+            UiUpdateService.UnsubscribeAsync(_updateCallback).GetAwaiter().GetResult();
+        }
+    }
+}

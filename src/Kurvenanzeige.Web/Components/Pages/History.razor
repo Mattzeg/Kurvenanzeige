@@ -1,0 +1,150 @@
+@page "/history"
+@using Kurvenanzeige.Core.Interfaces
+@using Kurvenanzeige.Core.Models
+@inject IDataRepository DataRepository
+@inject ILogger<History> Logger
+@rendermode InteractiveServer
+
+<PageTitle>History - Kurvenanzeige</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2>Data History</h2>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <label class="form-label">Start Date</label>
+            <input type="datetime-local" class="form-control" @bind="_startDate" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">End Date</label>
+            <input type="datetime-local" class="form-control" @bind="_endDate" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">&nbsp;</label>
+            <button type="button" class="btn btn-primary d-block" @onclick="LoadHistoryDataAsync">Load Data</button>
+        </div>
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    Loading history data...
+                </div>
+            </div>
+        </div>
+    }
+    else if (_analogHistory.Any())
+    {
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Analog Values (@_analogHistory.Count records)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                            <table class="table table-sm table-striped table-hover">
+                                <thead class="table-dark position-sticky top-0">
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Tag Name</th>
+                                        <th>Value</th>
+                                        <th>Unit</th>
+                                        <th>Quality</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var reading in _analogHistory.Take(500))
+                                    {
+                                        <tr>
+                                            <td>@reading.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                            <td>@reading.TagName</td>
+                                            <td>@reading.Value.ToString("F2")</td>
+                                            <td>@reading.Unit</td>
+                                            <td>
+                                                <span class="badge @GetQualityBadge(reading.Quality)">
+                                                    @reading.Quality
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        @if (_analogHistory.Count > 500)
+                        {
+                            <div class="alert alert-warning mt-2">
+                                Showing first 500 of @_analogHistory.Count records. Please narrow your search.
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    No history data available. Select a date range and click Load Data.
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private DateTime _startDate = DateTime.Now.AddHours(-24);
+    private DateTime _endDate = DateTime.Now;
+    private List<AnalogValue> _analogHistory = new();
+    private bool _isLoading = false;
+
+    private async Task LoadHistoryDataAsync()
+    {
+        _isLoading = true;
+        _analogHistory.Clear();
+
+        try
+        {
+            var configs = await DataRepository.GetEnabledDataPointsAsync();
+            var analogConfigs = configs.Where(c => c.DataType == DataPointType.Analog).ToList();
+
+            foreach (var config in analogConfigs)
+            {
+                var history = await DataRepository.GetAnalogHistoryAsync(config.TagName, _startDate, _endDate);
+                _analogHistory.AddRange(history);
+            }
+
+            _analogHistory = _analogHistory.OrderByDescending(h => h.Timestamp).ToList();
+
+            Logger.LogInformation("Loaded {Count} history records", _analogHistory.Count);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading history data");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string GetQualityBadge(Quality quality)
+    {
+        return quality switch
+        {
+            Quality.Good => "bg-success",
+            Quality.Uncertain => "bg-warning",
+            Quality.Bad => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+}

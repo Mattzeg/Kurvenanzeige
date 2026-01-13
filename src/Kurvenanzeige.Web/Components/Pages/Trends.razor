@@ -1,0 +1,155 @@
+@page "/trends"
+@using Kurvenanzeige.Core.Interfaces
+@using Kurvenanzeige.Core.Models
+@inject IDataRepository DataRepository
+@inject ILogger<Trends> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Trends - Kurvenanzeige</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2>Trend Charts</h2>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <label class="form-label">Start Date</label>
+            <input type="datetime-local" class="form-control" @bind="_startDate" @bind:after="OnDateRangeChanged" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">End Date</label>
+            <input type="datetime-local" class="form-control" @bind="_endDate" @bind:after="OnDateRangeChanged" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Quick Select</label>
+            <div class="btn-group d-block" role="group">
+                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeRange(1)">Last Hour</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeRange(24)">24 Hours</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeRange(168)">7 Days</button>
+            </div>
+        </div>
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    Loading trend data...
+                </div>
+            </div>
+        </div>
+    }
+    else if (_trendData.Any())
+    {
+        @foreach (var trend in _trendData)
+        {
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">@trend.DisplayName</h5>
+                            <small class="text-muted">@trend.TagName</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container" style="position: relative; height:300px;">
+                                <p class="text-muted">Chart visualization would appear here</p>
+                                <p>Data points: @trend.Values.Count</p>
+                                @if (trend.Values.Any())
+                                {
+                                    <p>Min: @trend.Values.Min(v => v.Value).ToString("F2") @trend.Unit</p>
+                                    <p>Max: @trend.Values.Max(v => v.Value).ToString("F2") @trend.Unit</p>
+                                    <p>Avg: @trend.Values.Average(v => v.Value).ToString("F2") @trend.Unit</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-warning">
+                    No trend data available for the selected time range.
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private DateTime _startDate = DateTime.Now.AddHours(-24);
+    private DateTime _endDate = DateTime.Now;
+    private List<TrendData> _trendData = new();
+    private bool _isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTrendDataAsync();
+    }
+
+    private async Task LoadTrendDataAsync()
+    {
+        _isLoading = true;
+        _trendData.Clear();
+
+        try
+        {
+            var configs = await DataRepository.GetEnabledDataPointsAsync();
+            var analogConfigs = configs.Where(c => c.DataType == DataPointType.Analog).ToList();
+
+            foreach (var config in analogConfigs)
+            {
+                var history = await DataRepository.GetAnalogHistoryAsync(config.TagName, _startDate, _endDate);
+
+                if (history.Any())
+                {
+                    _trendData.Add(new TrendData
+                        {
+                            TagName = config.TagName,
+                            DisplayName = config.DisplayName,
+                            Unit = config.Unit ?? "",
+                            Values = history
+                        });
+                }
+            }
+
+            Logger.LogInformation("Loaded {Count} trends", _trendData.Count);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading trend data");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnDateRangeChanged()
+    {
+        await LoadTrendDataAsync();
+    }
+
+    private async Task SetTimeRange(int hours)
+    {
+        _endDate = DateTime.Now;
+        _startDate = _endDate.AddHours(-hours);
+        await LoadTrendDataAsync();
+    }
+
+    private class TrendData
+    {
+        public string TagName { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Unit { get; set; } = string.Empty;
+        public List<AnalogValue> Values { get; set; } = new();
+    }
+}
