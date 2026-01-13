@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 
 # Datum für Ordnername
 $targetDate = Get-Date -Format "yyyy-MM-dd"
-$featureName = "S7PlcMonitor"
+$featureName = "GermanUI-StringSupport"
 
 # Zielordner gemäß CLAUDE.md
 $targetBase = "C:\Users\matth\OneDrive\Dokumente\Portable Anwendungen"
