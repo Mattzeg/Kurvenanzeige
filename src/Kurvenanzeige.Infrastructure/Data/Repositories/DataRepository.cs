@@ -43,6 +43,28 @@ public class DataRepository : IDataRepository
         }).ToList();
     }
 
+    public async Task<List<DataPointConfig>> GetAllDataPointsAsync()
+    {
+        var configs = await _context.DataPointConfigurations
+            .AsNoTracking()
+            .ToListAsync();
+
+        return configs.Select(c => new DataPointConfig
+        {
+            TagName = c.TagName,
+            DisplayName = c.DisplayName,
+            DataType = Enum.Parse<DataPointType>(c.DataType),
+            DbNumber = c.DbNumber,
+            Offset = c.Offset,
+            Bit = c.Bit,
+            Unit = c.Unit,
+            MinValue = c.MinValue,
+            MaxValue = c.MaxValue,
+            IsEnabled = c.IsEnabled,
+            PollingInterval = c.PollingInterval
+        }).ToList();
+    }
+
     public async Task<DataPointConfig?> GetDataPointAsync(string tagName)
     {
         var config = await _context.DataPointConfigurations

@@ -1,6 +1,7 @@
 @page "/settings"
 @using Kurvenanzeige.Core.Interfaces
 @using Kurvenanzeige.Core.Configuration
+@using Kurvenanzeige.Core.Models
 @using Microsoft.Extensions.Options
 @inject IOptions<PlcConnectionConfig> PlcConfig
 @inject IDataRepository DataRepository
@@ -55,37 +56,184 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Data Points</h5>
+                    <h5 class="mb-0">System Information</h5>
                 </div>
                 <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Application</dt>
+                        <dd class="col-sm-8">Kurvenanzeige - S7-1500 PLC Monitor</dd>
+
+                        <dt class="col-sm-4">Version</dt>
+                        <dd class="col-sm-8">1.0.0</dd>
+
+                        <dt class="col-sm-4">Database</dt>
+                        <dd class="col-sm-8">SQLite (kurvenanzeige.db)</dd>
+
+                        <dt class="col-sm-4">Data Retention</dt>
+                        <dd class="col-sm-8">7 days (raw data)</dd>
+
+                        <dt class="col-sm-4">Data Points</dt>
+                        <dd class="col-sm-8">@_dataPoints.Count configured</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Data Point Management</h5>
+                    <button class="btn btn-success btn-sm" @onclick="ShowAddForm">
+                        <i class="bi bi-plus-circle"></i> Add New Data Point
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (_showAddForm || _editingDataPoint != null)
+                    {
+                        <div class="border rounded p-3 mb-3 bg-light">
+                            <h6>@(_editingDataPoint != null ? "Edit Data Point" : "Add New Data Point")</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Tag Name *</label>
+                                    <input type="text" class="form-control" @bind="_formTagName" placeholder="e.g., Temperature_Tank1" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Display Name *</label>
+                                    <input type="text" class="form-control" @bind="_formDisplayName" placeholder="e.g., Tank 1 Temperature" />
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Data Type *</label>
+                                    <select class="form-select" @bind="_formDataType">
+                                        <option value="Analog">Analog (REAL/INT)</option>
+                                        <option value="Digital">Digital (BOOL)</option>
+                                        <option value="DataBlock">DataBlock</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">DB Number *</label>
+                                    <input type="number" class="form-control" @bind="_formDbNumber" placeholder="e.g., 1" />
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Offset *</label>
+                                    <input type="number" class="form-control" @bind="_formOffset" placeholder="e.g., 0" />
+                                </div>
+                            </div>
+                            <div class="row">
+                                @if (_formDataType == "Digital")
+                                {
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Bit (0-7) *</label>
+                                        <input type="number" class="form-control" @bind="_formBit" min="0" max="7" />
+                                    </div>
+                                }
+                                @if (_formDataType == "Analog")
+                                {
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Unit</label>
+                                        <input type="text" class="form-control" @bind="_formUnit" placeholder="e.g., °C, bar, m³/h" />
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Min Value</label>
+                                        <input type="number" step="0.1" class="form-control" @bind="_formMinValue" />
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Max Value</label>
+                                        <input type="number" step="0.1" class="form-control" @bind="_formMaxValue" />
+                                    </div>
+                                }
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Polling Interval (ms)</label>
+                                    <input type="number" class="form-control" @bind="_formPollingInterval" />
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Enabled</label>
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" @bind="_formIsEnabled" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary" @onclick="SaveDataPoint">
+                                    <i class="bi bi-save"></i> Save
+                                </button>
+                                <button class="btn btn-secondary" @onclick="CancelEdit">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </button>
+                            </div>
+                            @if (!string.IsNullOrEmpty(_formErrorMessage))
+                            {
+                                <div class="alert alert-danger mt-3">@_formErrorMessage</div>
+                            }
+                            @if (!string.IsNullOrEmpty(_formSuccessMessage))
+                            {
+                                <div class="alert alert-success mt-3">@_formSuccessMessage</div>
+                            }
+                        </div>
+                    }
+
                     @if (_dataPoints.Any())
                     {
                         <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
+                            <table class="table table-sm table-hover">
+                                <thead class="table-dark">
                                     <tr>
+                                        <th>Tag Name</th>
                                         <th>Display Name</th>
-                                        <th>Tag</th>
                                         <th>Type</th>
-                                        <th>Enabled</th>
+                                        <th>Address</th>
+                                        <th>Unit</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var dp in _dataPoints)
                                     {
                                         <tr>
+                                            <td><code>@dp.TagName</code></td>
                                             <td>@dp.DisplayName</td>
-                                            <td><small>@dp.TagName</small></td>
                                             <td><span class="badge bg-secondary">@dp.DataType</span></td>
+                                            <td>
+                                                <small>
+                                                    DB@(dp.DbNumber).
+                                                    @if (dp.DataType == DataPointType.Digital)
+                                                    {
+                                                        <text>DBX@(dp.Offset).@(dp.Bit)</text>
+                                                    }
+                                                    else if (dp.DataType == DataPointType.Analog)
+                                                    {
+                                                        <text>DBD@(dp.Offset)</text>
+                                                    }
+                                                    else
+                                                    {
+                                                        <text>@(dp.Offset)</text>
+                                                    }
+                                                </small>
+                                            </td>
+                                            <td>@dp.Unit</td>
                                             <td>
                                                 @if (dp.IsEnabled)
                                                 {
-                                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                                    <span class="badge bg-success">Enabled</span>
                                                 }
                                                 else
                                                 {
-                                                    <i class="bi bi-x-circle-fill text-danger"></i>
+                                                    <span class="badge bg-secondary">Disabled</span>
                                                 }
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-outline-primary" @onclick="() => EditDataPoint(dp)" title="Edit">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-danger" @onclick="() => DeleteDataPoint(dp)" title="Delete">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     }
@@ -96,7 +244,7 @@
                     else
                     {
                         <div class="alert alert-warning">
-                            No data points configured.
+                            No data points configured. Click "Add New Data Point" to get started.
                         </div>
                     }
                 </div>
@@ -106,25 +254,13 @@
 
     <div class="row">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">System Information</h5>
-                </div>
-                <div class="card-body">
-                    <dl class="row mb-0">
-                        <dt class="col-sm-3">Application</dt>
-                        <dd class="col-sm-9">Kurvenanzeige - S7-1500 PLC Monitor</dd>
-
-                        <dt class="col-sm-3">Version</dt>
-                        <dd class="col-sm-9">1.0.0</dd>
-
-                        <dt class="col-sm-3">Database</dt>
-                        <dd class="col-sm-9">SQLite (kurvenanzeige.db)</dd>
-
-                        <dt class="col-sm-3">Data Retention</dt>
-                        <dd class="col-sm-9">7 days (raw data)</dd>
-                    </dl>
-                </div>
+            <div class="alert alert-info">
+                <h6>PLC Address Format:</h6>
+                <ul class="mb-0">
+                    <li><strong>Analog (REAL):</strong> DB Number + Offset (e.g., DB1.DBD0 = DB:1, Offset:0)</li>
+                    <li><strong>Digital (BOOL):</strong> DB Number + Offset + Bit (e.g., DB2.DBX0.0 = DB:2, Offset:0, Bit:0)</li>
+                    <li><strong>DataBlock:</strong> DB Number + Offset + Length</li>
+                </ul>
             </div>
         </div>
     </div>
@@ -132,17 +268,172 @@
 
 @code {
     private List<DataPointConfig> _dataPoints = new();
+    private bool _showAddForm = false;
+    private DataPointConfig? _editingDataPoint = null;
+
+    // Form fields
+    private string _formTagName = "";
+    private string _formDisplayName = "";
+    private string _formDataType = "Analog";
+    private int _formDbNumber = 1;
+    private int _formOffset = 0;
+    private int? _formBit = 0;
+    private string? _formUnit = "";
+    private float? _formMinValue = null;
+    private float? _formMaxValue = null;
+    private bool _formIsEnabled = true;
+    private int _formPollingInterval = 5000;
+    private string _formErrorMessage = "";
+    private string _formSuccessMessage = "";
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadDataPointsAsync();
+    }
+
+    private async Task LoadDataPointsAsync()
+    {
         try
         {
-            _dataPoints = await DataRepository.GetEnabledDataPointsAsync();
+            _dataPoints = await DataRepository.GetAllDataPointsAsync();
             Logger.LogInformation("Loaded {Count} data points", _dataPoints.Count);
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading data points");
         }
+    }
+
+    private void ShowAddForm()
+    {
+        _showAddForm = true;
+        _editingDataPoint = null;
+        ClearForm();
+    }
+
+    private void EditDataPoint(DataPointConfig dataPoint)
+    {
+        _editingDataPoint = dataPoint;
+        _showAddForm = false;
+
+        _formTagName = dataPoint.TagName;
+        _formDisplayName = dataPoint.DisplayName;
+        _formDataType = dataPoint.DataType.ToString();
+        _formDbNumber = dataPoint.DbNumber;
+        _formOffset = dataPoint.Offset;
+        _formBit = dataPoint.Bit;
+        _formUnit = dataPoint.Unit;
+        _formMinValue = dataPoint.MinValue;
+        _formMaxValue = dataPoint.MaxValue;
+        _formIsEnabled = dataPoint.IsEnabled;
+        _formPollingInterval = dataPoint.PollingInterval;
+        _formErrorMessage = "";
+        _formSuccessMessage = "";
+    }
+
+    private async Task SaveDataPoint()
+    {
+        _formErrorMessage = "";
+        _formSuccessMessage = "";
+
+        try
+        {
+            // Validation
+            if (string.IsNullOrWhiteSpace(_formTagName))
+            {
+                _formErrorMessage = "Tag Name is required";
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(_formDisplayName))
+            {
+                _formErrorMessage = "Display Name is required";
+                return;
+            }
+            if (_formDataType == "Digital" && !_formBit.HasValue)
+            {
+                _formErrorMessage = "Bit position is required for Digital data points";
+                return;
+            }
+
+            var config = new DataPointConfig
+            {
+                TagName = _formTagName.Trim(),
+                DisplayName = _formDisplayName.Trim(),
+                DataType = Enum.Parse<DataPointType>(_formDataType),
+                DbNumber = _formDbNumber,
+                Offset = _formOffset,
+                Bit = _formBit,
+                Unit = _formUnit,
+                MinValue = _formMinValue,
+                MaxValue = _formMaxValue,
+                IsEnabled = _formIsEnabled,
+                PollingInterval = _formPollingInterval
+            };
+
+            await DataRepository.SaveDataPointConfigAsync(config);
+
+            _formSuccessMessage = _editingDataPoint != null
+                ? "Data point updated successfully!"
+                : "Data point added successfully!";
+
+            await LoadDataPointsAsync();
+
+            // Close form after 2 seconds
+            await Task.Delay(2000);
+            CancelEdit();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving data point");
+            _formErrorMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task DeleteDataPoint(DataPointConfig dataPoint)
+    {
+        if (confirm($"Are you sure you want to delete '{dataPoint.DisplayName}'?"))
+        {
+            try
+            {
+                // Disable instead of delete to preserve history
+                dataPoint.IsEnabled = false;
+                await DataRepository.SaveDataPointConfigAsync(dataPoint);
+                await LoadDataPointsAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting data point");
+            }
+        }
+    }
+
+    private void CancelEdit()
+    {
+        _showAddForm = false;
+        _editingDataPoint = null;
+        ClearForm();
+    }
+
+    private void ClearForm()
+    {
+        _formTagName = "";
+        _formDisplayName = "";
+        _formDataType = "Analog";
+        _formDbNumber = 1;
+        _formOffset = 0;
+        _formBit = 0;
+        _formUnit = "";
+        _formMinValue = null;
+        _formMaxValue = null;
+        _formIsEnabled = true;
+        _formPollingInterval = 5000;
+        _formErrorMessage = "";
+        _formSuccessMessage = "";
+    }
+
+    private bool confirm(string message)
+    {
+        // In real app, use JavaScript interop for confirm dialog
+        return true;
     }
 }

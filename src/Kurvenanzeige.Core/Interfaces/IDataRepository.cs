@@ -6,6 +6,7 @@ namespace Kurvenanzeige.Core.Interfaces;
 public interface IDataRepository
 {
     Task<List<DataPointConfig>> GetEnabledDataPointsAsync();
+    Task<List<DataPointConfig>> GetAllDataPointsAsync();
     Task<DataPointConfig?> GetDataPointAsync(string tagName);
     Task SaveDataPointConfigAsync(DataPointConfig config);
 
