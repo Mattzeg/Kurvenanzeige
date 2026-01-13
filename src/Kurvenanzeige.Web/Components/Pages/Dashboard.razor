@@ -13,11 +13,11 @@
 <div class="container-fluid">
     <div class="row mb-3">
         <div class="col-12">
-            <h2>Live Process Data</h2>
+            <h2>Live Prozessdaten</h2>
             <span class="badge @(_isSystemHealthy ? "bg-success" : "bg-danger")">
-                @(_isSystemHealthy ? "System Running" : "System Error")
+                @(_isSystemHealthy ? "System aktiv" : "Systemfehler")
             </span>
-            <span class="ms-2 text-muted">Last Update: @_lastUpdate.ToString("HH:mm:ss")</span>
+            <span class="ms-2 text-muted">Letzte Aktualisierung: @_lastUpdate.ToString("HH:mm:ss")</span>
         </div>
     </div>
 
@@ -25,7 +25,7 @@
     {
         <div class="row mb-4">
             <div class="col-12">
-                <h4>Analog Values</h4>
+                <h4>Analogwerte</h4>
             </div>
             @foreach (var analog in _analogValues)
             {
@@ -53,9 +53,9 @@
 
     @if (_digitalSignals.Any())
     {
-        <div class="row">
+        <div class="row mb-4">
             <div class="col-12">
-                <h4>Digital Signals</h4>
+                <h4>Digitalsignale</h4>
             </div>
             <div class="col-12">
                 <div class="d-flex flex-wrap gap-2">
@@ -72,17 +72,41 @@
         </div>
     }
 
-    @if (!_analogValues.Any() && !_digitalSignals.Any())
+    @if (_stringValues.Any())
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <h4>Textwerte</h4>
+            </div>
+            @foreach (var stringVal in _stringValues)
+            {
+                <div class="col-md-4 col-sm-6 mb-3">
+                    <div class="card h-100 @GetQualityClass(stringVal.Quality)">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">@stringVal.DisplayName</h6>
+                            <p class="card-text">@stringVal.Value</p>
+                            <small class="text-muted">@stringVal.TagName</small>
+                        </div>
+                        <div class="card-footer text-muted">
+                            <small>@stringVal.Timestamp.ToString("HH:mm:ss")</small>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (!_analogValues.Any() && !_digitalSignals.Any() && !_stringValues.Any())
     {
         <div class="row">
             <div class="col-12">
                 <div class="alert alert-info">
-                    <h5>No Data Available</h5>
-                    <p>Waiting for PLC data... Please check:</p>
+                    <h5>Keine Daten verfügbar</h5>
+                    <p>Warte auf SPS-Daten... Bitte prüfen:</p>
                     <ul>
-                        <li>PLC connection settings in appsettings.json</li>
-                        <li>Data point configurations in the database</li>
-                        <li>PLC network connectivity</li>
+                        <li>SPS-Verbindungseinstellungen in appsettings.json</li>
+                        <li>Datenpunkt-Konfigurationen in der Datenbank</li>
+                        <li>SPS-Netzwerkverbindung</li>
                     </ul>
                 </div>
             </div>
@@ -93,6 +117,7 @@
 @code {
     private List<AnalogValue> _analogValues = new();
     private List<DigitalSignal> _digitalSignals = new();
+    private List<StringValue> _stringValues = new();
     private DateTime _lastUpdate = DateTime.Now;
     private bool _isSystemHealthy = false;
     private Func<List<PlcDataPoint>, Task>? _updateCallback;
@@ -139,6 +164,11 @@
                 .OrderBy(v => v.DisplayName)
                 .ToList();
 
+            _stringValues = latestValues.Values
+                .OfType<StringValue>()
+                .OrderBy(v => v.DisplayName)
+                .ToList();
+
             if (latestValues.Any())
             {
                 _lastUpdate = latestValues.Values.Max(v => v.Timestamp);
@@ -172,10 +202,20 @@
                 }
                 _digitalSignals.Add(digital);
             }
+            else if (reading is StringValue stringVal)
+            {
+                var existing = _stringValues.FirstOrDefault(s => s.TagName == stringVal.TagName);
+                if (existing != null)
+                {
+                    _stringValues.Remove(existing);
+                }
+                _stringValues.Add(stringVal);
+            }
         }
 
         _analogValues = _analogValues.OrderBy(v => v.DisplayName).ToList();
         _digitalSignals = _digitalSignals.OrderBy(v => v.DisplayName).ToList();
+        _stringValues = _stringValues.OrderBy(v => v.DisplayName).ToList();
 
         if (readings.Any())
         {

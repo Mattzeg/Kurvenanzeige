@@ -12,6 +12,7 @@ public class AppDbContext : DbContext
     public DbSet<AnalogReading> AnalogReadings => Set<AnalogReading>();
     public DbSet<DigitalReading> DigitalReadings => Set<DigitalReading>();
     public DbSet<DataBlockReading> DataBlockReadings => Set<DataBlockReading>();
+    public DbSet<StringReading> StringReadings => Set<StringReading>();
     public DbSet<DataPointConfiguration> DataPointConfigurations => Set<DataPointConfiguration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -41,6 +42,15 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => new { e.TagName, e.Timestamp });
             entity.Property(e => e.TagName).IsRequired().HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<StringReading>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => new { e.TagName, e.Timestamp });
+            entity.Property(e => e.TagName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Value).HasMaxLength(255);
         });
 
         modelBuilder.Entity<DataPointConfiguration>(entity =>

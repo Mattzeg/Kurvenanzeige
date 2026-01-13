@@ -174,6 +174,31 @@ public class S7PlcService : IPlcService, IDisposable
         }
     }
 
+    public async Task<string> ReadStringAsync(int dbNumber, int offset, int maxLength = 254, CancellationToken ct = default)
+    {
+        await EnsureConnectedAsync(ct);
+
+        try
+        {
+            // S7 String format: Byte 0 = max length, Byte 1 = actual length, Byte 2+ = characters
+            var bytes = await ReadBytesAsync(dbNumber, offset, maxLength + 2, ct);
+            var actualLength = bytes[1];
+
+            if (actualLength > maxLength)
+                actualLength = (byte)maxLength;
+
+            var stringBytes = new byte[actualLength];
+            Array.Copy(bytes, 2, stringBytes, 0, actualLength);
+
+            return System.Text.Encoding.ASCII.GetString(stringBytes);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading STRING from DB{DbNumber}.{Offset}", dbNumber, offset);
+            throw new PlcReadException($"Failed to read STRING from DB{dbNumber}.{offset}", ex);
+        }
+    }
+
     public async Task<List<PlcDataPoint>> ReadMultipleAsync(List<DataPointConfig> configs, CancellationToken ct = default)
     {
         await EnsureConnectedAsync(ct);
@@ -190,6 +215,7 @@ public class S7PlcService : IPlcService, IDisposable
                     DataPointType.Analog => await ReadAnalogValueAsync(config, timestamp, ct),
                     DataPointType.Digital => await ReadDigitalSignalAsync(config, timestamp, ct),
                     DataPointType.DataBlock => await ReadDataBlockValueAsync(config, timestamp, ct),
+                    DataPointType.String => await ReadStringValueAsync(config, timestamp, ct),
                     _ => null
                 };
 
@@ -266,6 +292,24 @@ public class S7PlcService : IPlcService, IDisposable
         };
     }
 
+    private async Task<StringValue> ReadStringValueAsync(DataPointConfig config, DateTime timestamp, CancellationToken ct)
+    {
+        var maxLength = 254; // Default S7 string length
+        var value = await ReadStringAsync(config.DbNumber, config.Offset, maxLength, ct);
+
+        return new StringValue
+        {
+            TagName = config.TagName,
+            DisplayName = config.DisplayName,
+            DbNumber = config.DbNumber,
+            Offset = config.Offset,
+            Value = value,
+            MaxLength = maxLength,
+            Quality = Quality.Good,
+            Timestamp = timestamp
+        };
+    }
+
     private PlcDataPoint CreateErrorDataPoint(DataPointConfig config, DateTime timestamp)
     {
         return config.DataType switch
@@ -288,6 +332,16 @@ public class S7PlcService : IPlcService, IDisposable
                 Offset = config.Offset,
                 Bit = config.Bit ?? 0,
                 Value = false,
+                Quality = Quality.Bad,
+                Timestamp = timestamp
+            },
+            DataPointType.String => new StringValue
+            {
+                TagName = config.TagName,
+                DisplayName = config.DisplayName,
+                DbNumber = config.DbNumber,
+                Offset = config.Offset,
+                Value = string.Empty,
                 Quality = Quality.Bad,
                 Timestamp = timestamp
             },

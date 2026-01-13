@@ -4,5 +4,6 @@ public enum DataPointType
 {
     Analog,
     Digital,
-    DataBlock
+    DataBlock,
+    String
 }

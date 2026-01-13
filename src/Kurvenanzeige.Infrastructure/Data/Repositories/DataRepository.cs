@@ -180,6 +180,19 @@ public class DataRepository : IDataRepository
                             Timestamp = dataBlock.Timestamp
                         }, ct);
                         break;
+
+                    case StringValue stringValue:
+                        await _context.StringReadings.AddAsync(new StringReading
+                        {
+                            TagName = stringValue.TagName,
+                            DbNumber = stringValue.DbNumber,
+                            Offset = stringValue.Offset,
+                            Value = stringValue.Value,
+                            MaxLength = stringValue.MaxLength,
+                            Quality = (int)stringValue.Quality,
+                            Timestamp = stringValue.Timestamp
+                        }, ct);
+                        break;
                 }
             }
 
@@ -288,6 +301,26 @@ public class DataRepository : IDataRepository
                 };
             }
 
+            var stringReadings = await _context.StringReadings
+                .GroupBy(r => r.TagName)
+                .Select(g => g.OrderByDescending(r => r.Timestamp).FirstOrDefault())
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var reading in stringReadings.Where(r => r != null))
+            {
+                latestValues[reading!.TagName] = new StringValue
+                {
+                    TagName = reading.TagName,
+                    DbNumber = reading.DbNumber,
+                    Offset = reading.Offset,
+                    Value = reading.Value,
+                    MaxLength = reading.MaxLength,
+                    Quality = (Quality)reading.Quality,
+                    Timestamp = reading.Timestamp
+                };
+            }
+
             _latestValuesCache.Clear();
             foreach (var kvp in latestValues)
             {
@@ -318,8 +351,12 @@ public class DataRepository : IDataRepository
                 .Where(r => r.Timestamp < olderThan)
                 .ExecuteDeleteAsync();
 
-            _logger.LogInformation("Deleted old readings: {Analog} analog, {Digital} digital, {DataBlock} datablock",
-                deletedAnalog, deletedDigital, deletedDataBlock);
+            var deletedString = await _context.StringReadings
+                .Where(r => r.Timestamp < olderThan)
+                .ExecuteDeleteAsync();
+
+            _logger.LogInformation("Deleted old readings: {Analog} analog, {Digital} digital, {DataBlock} datablock, {String} string",
+                deletedAnalog, deletedDigital, deletedDataBlock, deletedString);
         }
         catch (Exception ex)
         {

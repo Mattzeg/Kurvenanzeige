@@ -8,12 +8,12 @@
 @inject ILogger<Settings> Logger
 @rendermode InteractiveServer
 
-<PageTitle>Settings - Kurvenanzeige</PageTitle>
+<PageTitle>Einstellungen - Kurvenanzeige</PageTitle>
 
 <div class="container-fluid">
     <div class="row mb-3">
         <div class="col-12">
-            <h2>Settings</h2>
+            <h2>Einstellungen</h2>
         </div>
     </div>
 
@@ -21,11 +21,11 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">PLC Connection</h5>
+                    <h5 class="mb-0">SPS-Verbindung</h5>
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <label class="form-label">IP Address</label>
+                        <label class="form-label">IP-Adresse</label>
                         <input type="text" class="form-control" value="@PlcConfig.Value.IpAddress" readonly />
                     </div>
                     <div class="row">
@@ -43,11 +43,11 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">CPU Type</label>
+                        <label class="form-label">CPU-Typ</label>
                         <input type="text" class="form-control" value="@PlcConfig.Value.CpuType" readonly />
                     </div>
                     <div class="alert alert-info">
-                        <small>To change PLC settings, edit appsettings.json and restart the application.</small>
+                        <small>Um die SPS-Einstellungen zu ändern, bearbeite appsettings.json und starte die Anwendung neu.</small>
                     </div>
                 </div>
             </div>
@@ -56,24 +56,24 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">System Information</h5>
+                    <h5 class="mb-0">Systeminformationen</h5>
                 </div>
                 <div class="card-body">
                     <dl class="row mb-0">
-                        <dt class="col-sm-4">Application</dt>
-                        <dd class="col-sm-8">Kurvenanzeige - S7-1500 PLC Monitor</dd>
+                        <dt class="col-sm-4">Anwendung</dt>
+                        <dd class="col-sm-8">Kurvenanzeige - S7-1500 SPS-Monitor</dd>
 
                         <dt class="col-sm-4">Version</dt>
                         <dd class="col-sm-8">1.0.0</dd>
 
-                        <dt class="col-sm-4">Database</dt>
+                        <dt class="col-sm-4">Datenbank</dt>
                         <dd class="col-sm-8">SQLite (kurvenanzeige.db)</dd>
 
-                        <dt class="col-sm-4">Data Retention</dt>
-                        <dd class="col-sm-8">7 days (raw data)</dd>
+                        <dt class="col-sm-4">Datenspeicherung</dt>
+                        <dd class="col-sm-8">7 Tage (Rohdaten)</dd>
 
-                        <dt class="col-sm-4">Data Points</dt>
-                        <dd class="col-sm-8">@_dataPoints.Count configured</dd>
+                        <dt class="col-sm-4">Datenpunkte</dt>
+                        <dd class="col-sm-8">@_dataPoints.Count konfiguriert</dd>
                     </dl>
                 </div>
             </div>
@@ -84,42 +84,43 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Data Point Management</h5>
+                    <h5 class="mb-0">Datenpunkt-Verwaltung</h5>
                     <button class="btn btn-success btn-sm" @onclick="ShowAddForm">
-                        <i class="bi bi-plus-circle"></i> Add New Data Point
+                        <i class="bi bi-plus-circle"></i> Neuen Datenpunkt hinzufügen
                     </button>
                 </div>
                 <div class="card-body">
                     @if (_showAddForm || _editingDataPoint != null)
                     {
                         <div class="border rounded p-3 mb-3 bg-light">
-                            <h6>@(_editingDataPoint != null ? "Edit Data Point" : "Add New Data Point")</h6>
+                            <h6>@(_editingDataPoint != null ? "Datenpunkt bearbeiten" : "Neuen Datenpunkt hinzufügen")</h6>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Tag Name *</label>
-                                    <input type="text" class="form-control" @bind="_formTagName" placeholder="e.g., Temperature_Tank1" />
+                                    <label class="form-label">Tag-Name *</label>
+                                    <input type="text" class="form-control" @bind="_formTagName" placeholder="z.B. Temperature_Tank1" />
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Display Name *</label>
-                                    <input type="text" class="form-control" @bind="_formDisplayName" placeholder="e.g., Tank 1 Temperature" />
+                                    <label class="form-label">Anzeigename *</label>
+                                    <input type="text" class="form-control" @bind="_formDisplayName" placeholder="z.B. Tank 1 Temperatur" />
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label">Data Type *</label>
+                                    <label class="form-label">Datentyp *</label>
                                     <select class="form-select" @bind="_formDataType">
                                         <option value="Analog">Analog (REAL/INT)</option>
                                         <option value="Digital">Digital (BOOL)</option>
+                                        <option value="String">String (TEXT)</option>
                                         <option value="DataBlock">DataBlock</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label">DB Number *</label>
-                                    <input type="number" class="form-control" @bind="_formDbNumber" placeholder="e.g., 1" />
+                                    <label class="form-label">DB-Nummer *</label>
+                                    <input type="number" class="form-control" @bind="_formDbNumber" placeholder="z.B. 1" />
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label">Offset *</label>
-                                    <input type="number" class="form-control" @bind="_formOffset" placeholder="e.g., 0" />
+                                    <input type="number" class="form-control" @bind="_formOffset" placeholder="z.B. 0" />
                                 </div>
                             </div>
                             <div class="row">
@@ -133,24 +134,24 @@
                                 @if (_formDataType == "Analog")
                                 {
                                     <div class="col-md-4 mb-3">
-                                        <label class="form-label">Unit</label>
-                                        <input type="text" class="form-control" @bind="_formUnit" placeholder="e.g., °C, bar, m³/h" />
+                                        <label class="form-label">Einheit</label>
+                                        <input type="text" class="form-control" @bind="_formUnit" placeholder="z.B. °C, bar, m³/h" />
                                     </div>
                                     <div class="col-md-4 mb-3">
-                                        <label class="form-label">Min Value</label>
+                                        <label class="form-label">Min-Wert</label>
                                         <input type="number" step="0.1" class="form-control" @bind="_formMinValue" />
                                     </div>
                                     <div class="col-md-4 mb-3">
-                                        <label class="form-label">Max Value</label>
+                                        <label class="form-label">Max-Wert</label>
                                         <input type="number" step="0.1" class="form-control" @bind="_formMaxValue" />
                                     </div>
                                 }
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label">Polling Interval (ms)</label>
+                                    <label class="form-label">Abfrageintervall (ms)</label>
                                     <input type="number" class="form-control" @bind="_formPollingInterval" />
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label">Enabled</label>
+                                    <label class="form-label">Aktiviert</label>
                                     <div class="form-check form-switch mt-2">
                                         <input class="form-check-input" type="checkbox" @bind="_formIsEnabled" />
                                     </div>
@@ -158,10 +159,10 @@
                             </div>
                             <div class="d-flex gap-2">
                                 <button class="btn btn-primary" @onclick="SaveDataPoint">
-                                    <i class="bi bi-save"></i> Save
+                                    <i class="bi bi-save"></i> Speichern
                                 </button>
                                 <button class="btn btn-secondary" @onclick="CancelEdit">
-                                    <i class="bi bi-x-circle"></i> Cancel
+                                    <i class="bi bi-x-circle"></i> Abbrechen
                                 </button>
                             </div>
                             @if (!string.IsNullOrEmpty(_formErrorMessage))
@@ -181,13 +182,13 @@
                             <table class="table table-sm table-hover">
                                 <thead class="table-dark">
                                     <tr>
-                                        <th>Tag Name</th>
-                                        <th>Display Name</th>
-                                        <th>Type</th>
-                                        <th>Address</th>
-                                        <th>Unit</th>
+                                        <th>Tag-Name</th>
+                                        <th>Anzeigename</th>
+                                        <th>Typ</th>
+                                        <th>Adresse</th>
+                                        <th>Einheit</th>
                                         <th>Status</th>
-                                        <th>Actions</th>
+                                        <th>Aktionen</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -218,19 +219,19 @@
                                             <td>
                                                 @if (dp.IsEnabled)
                                                 {
-                                                    <span class="badge bg-success">Enabled</span>
+                                                    <span class="badge bg-success">Aktiviert</span>
                                                 }
                                                 else
                                                 {
-                                                    <span class="badge bg-secondary">Disabled</span>
+                                                    <span class="badge bg-secondary">Deaktiviert</span>
                                                 }
                                             </td>
                                             <td>
                                                 <div class="btn-group btn-group-sm">
-                                                    <button class="btn btn-outline-primary" @onclick="() => EditDataPoint(dp)" title="Edit">
+                                                    <button class="btn btn-outline-primary" @onclick="() => EditDataPoint(dp)" title="Bearbeiten">
                                                         <i class="bi bi-pencil"></i>
                                                     </button>
-                                                    <button class="btn btn-outline-danger" @onclick="() => DeleteDataPoint(dp)" title="Delete">
+                                                    <button class="btn btn-outline-danger" @onclick="() => DeleteDataPoint(dp)" title="Löschen">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
                                                 </div>
@@ -244,7 +245,7 @@
                     else
                     {
                         <div class="alert alert-warning">
-                            No data points configured. Click "Add New Data Point" to get started.
+                            Keine Datenpunkte konfiguriert. Klicke auf "Neuen Datenpunkt hinzufügen" um zu beginnen.
                         </div>
                     }
                 </div>
@@ -255,11 +256,12 @@
     <div class="row">
         <div class="col-12">
             <div class="alert alert-info">
-                <h6>PLC Address Format:</h6>
+                <h6>SPS-Adressformat:</h6>
                 <ul class="mb-0">
-                    <li><strong>Analog (REAL):</strong> DB Number + Offset (e.g., DB1.DBD0 = DB:1, Offset:0)</li>
-                    <li><strong>Digital (BOOL):</strong> DB Number + Offset + Bit (e.g., DB2.DBX0.0 = DB:2, Offset:0, Bit:0)</li>
-                    <li><strong>DataBlock:</strong> DB Number + Offset + Length</li>
+                    <li><strong>Analog (REAL):</strong> DB-Nummer + Offset (z.B. DB1.DBD0 = DB:1, Offset:0)</li>
+                    <li><strong>Digital (BOOL):</strong> DB-Nummer + Offset + Bit (z.B. DB2.DBX0.0 = DB:2, Offset:0, Bit:0)</li>
+                    <li><strong>String (TEXT):</strong> DB-Nummer + Offset (z.B. DB3.0 = DB:3, Offset:0)</li>
+                    <li><strong>DataBlock:</strong> DB-Nummer + Offset + Länge</li>
                 </ul>
             </div>
         </div>

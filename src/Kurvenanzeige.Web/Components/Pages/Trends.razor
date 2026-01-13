@@ -10,25 +10,25 @@
 <div class="container-fluid">
     <div class="row mb-3">
         <div class="col-12">
-            <h2>Trend Charts</h2>
+            <h2>Trenddiagramme</h2>
         </div>
     </div>
 
     <div class="row mb-3">
         <div class="col-md-3">
-            <label class="form-label">Start Date</label>
+            <label class="form-label">Startdatum</label>
             <input type="datetime-local" class="form-control" @bind="_startDate" @bind:after="OnDateRangeChanged" />
         </div>
         <div class="col-md-3">
-            <label class="form-label">End Date</label>
+            <label class="form-label">Enddatum</label>
             <input type="datetime-local" class="form-control" @bind="_endDate" @bind:after="OnDateRangeChanged" />
         </div>
         <div class="col-md-3">
-            <label class="form-label">Quick Select</label>
+            <label class="form-label">Schnellauswahl</label>
             <div class="btn-group d-block" role="group">
-                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeRange(1)">Last Hour</button>
-                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeRange(24)">24 Hours</button>
-                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeRange(168)">7 Days</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeRange(1)">Letzte Stunde</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeRange(24)">24 Stunden</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeRange(168)">7 Tage</button>
             </div>
         </div>
     </div>
@@ -39,7 +39,7 @@
             <div class="col-12">
                 <div class="alert alert-info">
                     <span class="spinner-border spinner-border-sm me-2"></span>
-                    Loading trend data...
+                    Lade Trenddaten...
                 </div>
             </div>
         </div>
@@ -57,13 +57,13 @@
                         </div>
                         <div class="card-body">
                             <div class="chart-container" style="position: relative; height:300px;">
-                                <p class="text-muted">Chart visualization would appear here</p>
-                                <p>Data points: @trend.Values.Count</p>
+                                <p class="text-muted">Diagrammvisualisierung würde hier erscheinen</p>
+                                <p>Datenpunkte: @trend.Values.Count</p>
                                 @if (trend.Values.Any())
                                 {
                                     <p>Min: @trend.Values.Min(v => v.Value).ToString("F2") @trend.Unit</p>
                                     <p>Max: @trend.Values.Max(v => v.Value).ToString("F2") @trend.Unit</p>
-                                    <p>Avg: @trend.Values.Average(v => v.Value).ToString("F2") @trend.Unit</p>
+                                    <p>Durchschn.: @trend.Values.Average(v => v.Value).ToString("F2") @trend.Unit</p>
                                 }
                             </div>
                         </div>
@@ -77,7 +77,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="alert alert-warning">
-                    No trend data available for the selected time range.
+                    Keine Trenddaten für den gewählten Zeitraum verfügbar.
                 </div>
             </div>
         </div>

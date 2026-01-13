@@ -10,22 +10,22 @@
 <div class="container-fluid">
     <div class="row mb-3">
         <div class="col-12">
-            <h2>Data History</h2>
+            <h2>Datenverlauf</h2>
         </div>
     </div>
 
     <div class="row mb-3">
         <div class="col-md-3">
-            <label class="form-label">Start Date</label>
+            <label class="form-label">Startdatum</label>
             <input type="datetime-local" class="form-control" @bind="_startDate" />
         </div>
         <div class="col-md-3">
-            <label class="form-label">End Date</label>
+            <label class="form-label">Enddatum</label>
             <input type="datetime-local" class="form-control" @bind="_endDate" />
         </div>
         <div class="col-md-3">
             <label class="form-label">&nbsp;</label>
-            <button type="button" class="btn btn-primary d-block" @onclick="LoadHistoryDataAsync">Load Data</button>
+            <button type="button" class="btn btn-primary d-block" @onclick="LoadHistoryDataAsync">Daten laden</button>
         </div>
     </div>
 
@@ -35,7 +35,7 @@
             <div class="col-12">
                 <div class="alert alert-info">
                     <span class="spinner-border spinner-border-sm me-2"></span>
-                    Loading history data...
+                    Lade Verlaufsdaten...
                 </div>
             </div>
         </div>
@@ -46,18 +46,18 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="mb-0">Analog Values (@_analogHistory.Count records)</h5>
+                        <h5 class="mb-0">Analogwerte (@_analogHistory.Count Datensätze)</h5>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
                             <table class="table table-sm table-striped table-hover">
                                 <thead class="table-dark position-sticky top-0">
                                     <tr>
-                                        <th>Timestamp</th>
-                                        <th>Tag Name</th>
-                                        <th>Value</th>
-                                        <th>Unit</th>
-                                        <th>Quality</th>
+                                        <th>Zeitstempel</th>
+                                        <th>Tag-Name</th>
+                                        <th>Wert</th>
+                                        <th>Einheit</th>
+                                        <th>Qualität</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -81,7 +81,7 @@
                         @if (_analogHistory.Count > 500)
                         {
                             <div class="alert alert-warning mt-2">
-                                Showing first 500 of @_analogHistory.Count records. Please narrow your search.
+                                Zeige erste 500 von @_analogHistory.Count Datensätzen. Bitte Suche eingrenzen.
                             </div>
                         }
                     </div>
@@ -94,7 +94,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="alert alert-info">
-                    No history data available. Select a date range and click Load Data.
+                    Keine Verlaufsdaten verfügbar. Wähle einen Zeitraum und klicke auf Daten laden.
                 </div>
             </div>
         </div>
