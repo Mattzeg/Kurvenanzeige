@@ -19,7 +19,8 @@
       "Bash(git push:*)",
       "Bash(pwsh -Command:*)",
       "Bash(powershell -ExecutionPolicy Bypass -File deployment/Publish-SelfContained.ps1)",
-      "Bash(sqlite3:*)"
+      "Bash(sqlite3:*)",
+      "Bash(powershell:*)"
     ]
   }
 }

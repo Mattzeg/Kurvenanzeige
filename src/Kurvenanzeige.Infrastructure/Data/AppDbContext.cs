@@ -66,6 +66,14 @@ public class AppDbContext : DbContext
 
     public async Task InitializeDatabaseAsync()
     {
+        // Ensure data directory exists (one level up from current directory)
+        var baseDir = Directory.GetParent(Directory.GetCurrentDirectory())?.FullName ?? Directory.GetCurrentDirectory();
+        var dataDir = Path.Combine(baseDir, "data");
+        if (!Directory.Exists(dataDir))
+        {
+            Directory.CreateDirectory(dataDir);
+        }
+
         await Database.MigrateAsync();
 
         await Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
