@@ -1,34 +1,101 @@
 @page "/trends"
 @using Kurvenanzeige.Core.Interfaces
 @using Kurvenanzeige.Core.Models
+@using Kurvenanzeige.Core.Configuration
+@using Microsoft.JSInterop
 @inject IDataRepository DataRepository
 @inject ILogger<Trends> Logger
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 @rendermode InteractiveServer
 
-<PageTitle>Trends - Kurvenanzeige</PageTitle>
+<PageTitle>Trenddiagramme - Kurvenanzeige</PageTitle>
 
 <div class="container-fluid">
     <div class="row mb-3">
         <div class="col-12">
-            <h2>Trenddiagramme</h2>
+            <h2>Historische Trenddaten</h2>
         </div>
     </div>
 
     <div class="row mb-3">
-        <div class="col-md-3">
-            <label class="form-label">Startdatum</label>
-            <input type="datetime-local" class="form-control" @bind="_startDate" @bind:after="OnDateRangeChanged" />
+        <div class="col-12">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn @GetButtonClass(1)" @onclick="() => SetTimeRange(1)">
+                    Letzte Stunde
+                </button>
+                <button type="button" class="btn @GetButtonClass(6)" @onclick="() => SetTimeRange(6)">
+                    Letzte 6 Stunden
+                </button>
+                <button type="button" class="btn @GetButtonClass(24)" @onclick="() => SetTimeRange(24)">
+                    Letzte 24 Stunden
+                </button>
+                <button type="button" class="btn @GetButtonClass(168)" @onclick="() => SetTimeRange(168)">
+                    Letzte 7 Tage
+                </button>
+                <button type="button" class="btn @GetButtonClass(720)" @onclick="() => SetTimeRange(720)">
+                    Letzte 30 Tage
+                </button>
+                <button type="button" class="btn @GetButtonClass(-1)" @onclick="ShowCustomRange">
+                    Benutzerdefiniert
+                </button>
+            </div>
         </div>
-        <div class="col-md-3">
-            <label class="form-label">Enddatum</label>
-            <input type="datetime-local" class="form-control" @bind="_endDate" @bind:after="OnDateRangeChanged" />
+    </div>
+
+    @if (_showCustomRange)
+    {
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label class="form-label">Startdatum</label>
+                <input type="datetime-local" class="form-control" @bind="_startDate" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Enddatum</label>
+                <input type="datetime-local" class="form-control" @bind="_endDate" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <button type="button" class="btn btn-primary d-block" @onclick="LoadTrendDataAsync">
+                    Daten laden
+                </button>
+            </div>
         </div>
-        <div class="col-md-3">
-            <label class="form-label">Schnellauswahl</label>
-            <div class="btn-group d-block" role="group">
-                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeRange(1)">Letzte Stunde</button>
-                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeRange(24)">24 Stunden</button>
-                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SetTimeRange(168)">7 Tage</button>
+    }
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Datenpunkte auswählen</h5>
+                </div>
+                <div class="card-body">
+                    @if (_availableDataPoints.Any())
+                    {
+                        <div class="row">
+                            @foreach (var dp in _availableDataPoints)
+                            {
+                                <div class="col-md-4 col-sm-6 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox"
+                                               id="@($"dp-{dp.TagName}")"
+                                               checked="@_selectedDataPoints.Contains(dp.TagName)"
+                                               @onchange="(e) => ToggleDataPoint(dp.TagName, (bool)(e.Value ?? false))" />
+                                        <label class="form-check-label" for="@($"dp-{dp.TagName}")">
+                                            @dp.DisplayName <small class="text-muted">(@dp.Unit)</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            Keine Datenpunkte konfiguriert. Bitte gehe zu Einstellungen.
+                        </div>
+                    }
+                </div>
             </div>
         </div>
     </div>
@@ -44,40 +111,26 @@
             </div>
         </div>
     }
-    else if (_trendData.Any())
+    else if (_selectedDataPoints.Any())
     {
-        @foreach (var trend in _trendData)
-        {
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">@trend.DisplayName</h5>
-                            <small class="text-muted">@trend.TagName</small>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container" style="position: relative; height:300px;">
-                                <p class="text-muted">Diagrammvisualisierung würde hier erscheinen</p>
-                                <p>Datenpunkte: @trend.Values.Count</p>
-                                @if (trend.Values.Any())
-                                {
-                                    <p>Min: @trend.Values.Min(v => v.Value).ToString("F2") @trend.Unit</p>
-                                    <p>Max: @trend.Values.Max(v => v.Value).ToString("F2") @trend.Unit</p>
-                                    <p>Durchschn.: @trend.Values.Average(v => v.Value).ToString("F2") @trend.Unit</p>
-                                }
-                            </div>
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div style="position: relative; height:500px;">
+                            <canvas id="trendChart"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
-        }
+        </div>
     }
     else
     {
         <div class="row">
             <div class="col-12">
                 <div class="alert alert-warning">
-                    Keine Trenddaten für den gewählten Zeitraum verfügbar.
+                    Bitte wähle mindestens einen Datenpunkt aus.
                 </div>
             </div>
         </div>
@@ -85,43 +138,149 @@
 </div>
 
 @code {
+    private List<DataPointConfig> _availableDataPoints = new();
+    private HashSet<string> _selectedDataPoints = new();
     private DateTime _startDate = DateTime.Now.AddHours(-24);
     private DateTime _endDate = DateTime.Now;
-    private List<TrendData> _trendData = new();
     private bool _isLoading = false;
+    private bool _showCustomRange = false;
+    private int _selectedTimeRangeHours = 24;
+
+    private readonly string[] _colors = new[]
+    {
+        "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF",
+        "#FF9F40", "#FF6384", "#C9CBCF", "#4BC0C0", "#FF6384"
+    };
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadAvailableDataPoints();
         await LoadTrendDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadTrendDataAsync();
+        }
+    }
+
+    private async Task LoadAvailableDataPoints()
+    {
+        try
+        {
+            var allConfigs = await DataRepository.GetEnabledDataPointsAsync();
+            _availableDataPoints = allConfigs.Where(c => c.DataType == DataPointType.Analog).ToList();
+
+            // Auto-select first 3 data points
+            _selectedDataPoints = _availableDataPoints.Take(3).Select(dp => dp.TagName).ToHashSet();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading available data points");
+        }
+    }
+
+    private async Task ToggleDataPoint(string tagName, bool isChecked)
+    {
+        if (isChecked)
+        {
+            _selectedDataPoints.Add(tagName);
+        }
+        else
+        {
+            _selectedDataPoints.Remove(tagName);
+        }
+
+        await LoadTrendDataAsync();
+    }
+
+    private async Task SetTimeRange(int hours)
+    {
+        _selectedTimeRangeHours = hours;
+        _showCustomRange = false;
+        _endDate = DateTime.Now;
+        _startDate = _endDate.AddHours(-hours);
+        await LoadTrendDataAsync();
+    }
+
+    private void ShowCustomRange()
+    {
+        _selectedTimeRangeHours = -1;
+        _showCustomRange = true;
+    }
+
+    private string GetButtonClass(int hours)
+    {
+        return _selectedTimeRangeHours == hours ? "btn-primary" : "btn-outline-primary";
     }
 
     private async Task LoadTrendDataAsync()
     {
+        if (!_selectedDataPoints.Any())
+        {
+            await JS.InvokeVoidAsync("chartHelper.destroyChart");
+            return;
+        }
+
         _isLoading = true;
-        _trendData.Clear();
+        StateHasChanged();
 
         try
         {
-            var configs = await DataRepository.GetEnabledDataPointsAsync();
-            var analogConfigs = configs.Where(c => c.DataType == DataPointType.Analog).ToList();
+            var datasets = new List<object>();
+            var allLabels = new List<string>();
 
-            foreach (var config in analogConfigs)
+            int colorIndex = 0;
+            foreach (var tagName in _selectedDataPoints)
             {
-                var history = await DataRepository.GetAnalogHistoryAsync(config.TagName, _startDate, _endDate);
+                var config = _availableDataPoints.FirstOrDefault(dp => dp.TagName == tagName);
+                if (config == null) continue;
+
+                var history = await DataRepository.GetAnalogHistoryAsync(tagName, _startDate, _endDate);
 
                 if (history.Any())
                 {
-                    _trendData.Add(new TrendData
-                        {
-                            TagName = config.TagName,
-                            DisplayName = config.DisplayName,
-                            Unit = config.Unit ?? "",
-                            Values = history
-                        });
+                    var data = history.Select(h => new
+                    {
+                        x = h.Timestamp.ToString("dd.MM.yyyy HH:mm:ss"),
+                        y = h.Value
+                    }).ToList();
+
+                    // Collect labels from first dataset
+                    if (!allLabels.Any())
+                    {
+                        allLabels = data.Select(d => d.x).ToList();
+                    }
+
+                    var dataset = new
+                    {
+                        label = config.DisplayName,
+                        data = data.Select(d => (object)d.y).ToList(),
+                        borderColor = _colors[colorIndex % _colors.Length],
+                        backgroundColor = _colors[colorIndex % _colors.Length] + "33",
+                        borderWidth = 2,
+                        fill = false,
+                        tension = 0.1,
+                        unit = config.Unit ?? ""
+                    };
+
+                    datasets.Add(dataset);
+                    colorIndex++;
                 }
             }
 
-            Logger.LogInformation("Loaded {Count} trends", _trendData.Count);
+            if (datasets.Any())
+            {
+                await JS.InvokeVoidAsync("chartHelper.createChart",
+                    "trendChart",
+                    datasets,
+                    allLabels,
+                    $"Trenddaten: {_startDate:dd.MM.yyyy HH:mm} - {_endDate:dd.MM.yyyy HH:mm}");
+            }
+
+            Logger.LogInformation("Loaded trend data for {Count} data points", datasets.Count);
         }
         catch (Exception ex)
         {
@@ -130,26 +289,19 @@
         finally
         {
             _isLoading = false;
+            StateHasChanged();
         }
     }
 
-    private async Task OnDateRangeChanged()
+    public async ValueTask DisposeAsync()
     {
-        await LoadTrendDataAsync();
-    }
-
-    private async Task SetTimeRange(int hours)
-    {
-        _endDate = DateTime.Now;
-        _startDate = _endDate.AddHours(-hours);
-        await LoadTrendDataAsync();
-    }
-
-    private class TrendData
-    {
-        public string TagName { get; set; } = string.Empty;
-        public string DisplayName { get; set; } = string.Empty;
-        public string Unit { get; set; } = string.Empty;
-        public List<AnalogValue> Values { get; set; } = new();
+        try
+        {
+            await JS.InvokeVoidAsync("chartHelper.destroyChart");
+        }
+        catch
+        {
+            // Ignore errors during disposal
+        }
     }
 }
